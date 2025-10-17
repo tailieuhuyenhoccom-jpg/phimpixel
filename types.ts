@@ -1,13 +1,14 @@
-export interface Step {
-  title: string;
-  content: string;
-  image?: string; // Optional image for visual aid
-}
 
-export interface Lesson {
+export type Grid = string[][];
+
+export interface ReferenceImage {
   id: number;
   title: string;
-  summary: string;
-  icon: string; // Emoji or icon identifier
-  steps: Step[];
+  url: string;
+}
+
+export interface SavedCreation {
+  name: string;
+  gridSize: number;
+  frames: Grid[];
 }

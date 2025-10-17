@@ -1,6 +1,7 @@
 
+
 import React from 'react';
-import { BACKGROUND_COLOR } from '../constants';
+import { BACKGROUND_COLOR } from '../constants.ts';
 
 interface ColorPaletteProps {
   colors: string[];

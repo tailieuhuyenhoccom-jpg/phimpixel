@@ -1,7 +1,8 @@
 
+
 import React, { useState } from 'react';
-import { REFERENCE_IMAGES } from '../constants';
-import type { ReferenceImage } from '../types';
+import { REFERENCE_IMAGES } from '../constants.ts';
+import type { ReferenceImage } from '../types.ts';
 
 export const ReferencePanel: React.FC = () => {
   const [zoomedImage, setZoomedImage] = useState<ReferenceImage | null>(null);

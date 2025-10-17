@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import type { SavedCreation } from '../types';
+import type { SavedCreation } from '../types.ts';
 
 interface SaveLoadPanelProps {
   savedCreations: SavedCreation[];

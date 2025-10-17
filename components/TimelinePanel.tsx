@@ -1,6 +1,7 @@
+
 import React from 'react';
-import type { Grid } from '../types';
-import FrameThumbnail from './FrameThumbnail';
+import type { Grid } from '../types.ts';
+import FrameThumbnail from './FrameThumbnail.tsx';
 
 interface TimelinePanelProps {
   frames: Grid[];
