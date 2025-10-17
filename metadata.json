@@ -1,0 +1,5 @@
+{
+  "name": "Lý Thuyết Học Vẽ - V01",
+  "description": "Một ứng dụng web cung cấp một khóa học lý thuyết vẽ có cấu trúc dành cho người mới bắt đầu. Tất cả các bài học đều có sẵn ngoại tuyến, hướng dẫn người dùng từ việc chuẩn bị dụng cụ đến tạo ra tác phẩm nghệ thuật đầu tiên của họ.",
+  "requestFramePermissions": []
+}
