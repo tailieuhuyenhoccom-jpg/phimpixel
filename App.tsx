@@ -22,6 +22,9 @@ const App: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackFrameIndex, setPlaybackFrameIndex] = useState<number | null>(null);
   const [fps, setFps] = useState(4);
+  const [isExportingVideo, setIsExportingVideo] = useState(false);
+  const [isPixelating, setIsPixelating] = useState(false);
+
 
   const [selectedColor, setSelectedColor] = useState<string>(PALETTE[1]);
   const [isMouseDown, setIsMouseDown] = useState<boolean>(false);
@@ -124,6 +127,97 @@ const App: React.FC = () => {
     updateHistoryForCurrentFrame(newGrid);
   };
 
+  const parsedPalette = useMemo(() => {
+    const hexToRgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      } : null;
+    };
+    return PALETTE.map(hex => ({ hex, rgb: hexToRgb(hex) })).filter(c => c.rgb !== null);
+  }, []);
+
+  const findClosestColor = (r: number, g: number, b: number): string => {
+    let minDistance = Infinity;
+    let closestColor = BACKGROUND_COLOR;
+
+    for (const paletteColor of parsedPalette) {
+      if (!paletteColor.rgb) continue;
+      const distance =
+        Math.pow(r - paletteColor.rgb.r, 2) +
+        Math.pow(g - paletteColor.rgb.g, 2) +
+        Math.pow(b - paletteColor.rgb.b, 2);
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestColor = paletteColor.hex;
+      }
+    }
+    return closestColor;
+  };
+
+  const handlePixelateImage = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng tải lên một tệp hình ảnh.');
+      return;
+    }
+    setIsPixelating(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = gridSize;
+        canvas.height = gridSize;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          console.error("Could not get canvas context");
+          setIsPixelating(false);
+          return;
+        }
+
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0, gridSize, gridSize);
+        const imageData = ctx.getImageData(0, 0, gridSize, gridSize);
+        const data = imageData.data;
+        const newGrid: Grid = createEmptyGrid(gridSize);
+
+        for (let y = 0; y < gridSize; y++) {
+          for (let x = 0; x < gridSize; x++) {
+            const index = (y * gridSize + x) * 4;
+            const r = data[index];
+            const g = data[index + 1];
+            const b = data[index + 2];
+            const a = data[index + 3];
+
+            if (a < 128) {
+              newGrid[y][x] = BACKGROUND_COLOR;
+            } else {
+              newGrid[y][x] = findClosestColor(r, g, b);
+            }
+          }
+        }
+
+        updateHistoryForCurrentFrame(newGrid);
+        setIsPixelating(false);
+      };
+      img.onerror = () => {
+        console.error("Error loading image.");
+        alert("Không thể tải hình ảnh. Vui lòng thử một hình ảnh khác.");
+        setIsPixelating(false);
+      }
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => {
+        console.error("Error reading file.");
+        alert("Lỗi khi đọc tệp.");
+        setIsPixelating(false);
+    }
+    reader.readAsDataURL(file);
+  };
+
   const handleDownloadImage = () => {
     const EXPORT_SIZE = 512;
     const pixelSize = EXPORT_SIZE / gridSize;
@@ -170,6 +264,122 @@ const App: React.FC = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url); // Clean up
+  };
+
+  const handleDownloadSpriteSheet = () => {
+    if (frames.length === 0) return;
+
+    const EXPORT_SIZE = 512;
+    const pixelSize = EXPORT_SIZE / gridSize;
+    const canvas = document.createElement('canvas');
+    canvas.width = EXPORT_SIZE * frames.length;
+    canvas.height = EXPORT_SIZE;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) return;
+
+    ctx.imageSmoothingEnabled = false;
+
+    frames.forEach((frameGrid, frameIndex) => {
+      const frameOffset = frameIndex * EXPORT_SIZE;
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          const color = frameGrid[y][x];
+          if (color !== BACKGROUND_COLOR) {
+            ctx.fillStyle = color;
+            ctx.fillRect(
+              frameOffset + (x * pixelSize), 
+              y * pixelSize, 
+              pixelSize, 
+              pixelSize
+            );
+          }
+        }
+      }
+    });
+
+    const link = document.createElement('a');
+    link.download = `pixel-art-spritesheet.png`;
+    link.href = canvas.toDataURL('image/png');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportVideo = () => {
+    if (frames.length === 0) {
+      alert("Không có khung hình nào để xuất video.");
+      return;
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      alert("Trình duyệt của bạn không hỗ trợ MediaRecorder API để xuất video.");
+      return;
+    }
+  
+    setIsExportingVideo(true);
+  
+    const EXPORT_SIZE = 512;
+    const pixelSize = EXPORT_SIZE / gridSize;
+    const canvas = document.createElement('canvas');
+    canvas.width = EXPORT_SIZE;
+    canvas.height = EXPORT_SIZE;
+    const ctx = canvas.getContext('2d');
+  
+    if (!ctx) {
+      alert("Không thể tạo canvas context.");
+      setIsExportingVideo(false);
+      return;
+    }
+    ctx.imageSmoothingEnabled = false;
+  
+    const stream = canvas.captureStream(fps);
+    const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+  
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        chunks.push(e.data);
+      }
+    };
+  
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `pixel-art-animation.webm`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setIsExportingVideo(false);
+    };
+  
+    recorder.start();
+  
+    let frameIndex = 0;
+    const interval = setInterval(() => {
+        if (frameIndex >= frames.length) {
+            clearInterval(interval);
+            recorder.stop();
+            return;
+        }
+
+        const frameGrid = frames[frameIndex];
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+                const color = frameGrid[y][x];
+                if (color !== BACKGROUND_COLOR) {
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+                }
+            }
+        }
+        
+        frameIndex++;
+    }, 1000 / fps);
   };
 
   const handleAddFrame = () => {
@@ -279,6 +489,9 @@ const App: React.FC = () => {
                 onRedo={handleRedo}
                 onDownload={handleDownloadImage}
                 onDownloadJson={handleDownloadJson}
+                onDownloadSpriteSheet={handleDownloadSpriteSheet}
+                onPixelateImage={handlePixelateImage}
+                isPixelating={isPixelating}
                 canUndo={canUndo}
                 canRedo={canRedo}
               />
@@ -304,6 +517,8 @@ const App: React.FC = () => {
             onDuplicateFrame={handleDuplicateFrame}
             onFpsChange={setFps}
             onPlayToggle={() => setIsPlaying(!isPlaying)}
+            onExportVideo={handleExportVideo}
+            isExportingVideo={isExportingVideo}
           />
         </div>
       </main>

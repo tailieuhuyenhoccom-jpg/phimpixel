@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useRef } from 'react';
 
 interface ControlsProps {
   gridSizes: number[];
@@ -9,6 +10,9 @@ interface ControlsProps {
   onRedo: () => void;
   onDownload: () => void;
   onDownloadJson: () => void;
+  onDownloadSpriteSheet: () => void;
+  onPixelateImage: (file: File) => void;
+  isPixelating: boolean;
   canUndo: boolean;
   canRedo: boolean;
 }
@@ -22,11 +26,39 @@ export const Controls: React.FC<ControlsProps> = ({
   onRedo,
   onDownload,
   onDownloadJson,
+  onDownloadSpriteSheet,
+  onPixelateImage,
+  isPixelating,
   canUndo,
   canRedo,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePixelateClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onPixelateImage(file);
+    }
+    // Reset to allow re-uploading the same file
+    if (event.target) {
+      event.target.value = '';
+    }
+  };
+
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-between p-2 bg-gray-700 rounded-lg">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        className="hidden"
+        aria-hidden="true"
+      />
       <div className="flex items-center gap-2">
         <span className="font-semibold text-gray-300">Lưới:</span>
         <div className="flex items-center bg-gray-800 rounded-md p-1">
@@ -45,7 +77,7 @@ export const Controls: React.FC<ControlsProps> = ({
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap justify-center items-center gap-2">
         <button
           onClick={onUndo}
           disabled={!canUndo}
@@ -85,6 +117,27 @@ export const Controls: React.FC<ControlsProps> = ({
             <path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 01-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
           </svg>
           JSON
+        </button>
+        <button
+          onClick={onDownloadSpriteSheet}
+          className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200"
+          aria-label="Tải về Sprite Sheet"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm1 2h2v2H6V5zm4 0h2v2h-2V5zm4 0h2v2h-2V5zm-8 4h2v2H6V9zm4 0h2v2h-2V9zm4 0h2v2h-2V9zm-8 4h2v2H6v-2zm4 0h2v2h-2v-2z" />
+          </svg>
+          Sheet
+        </button>
+         <button
+          onClick={handlePixelateClick}
+          disabled={isPixelating}
+          className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md transition-colors duration-200 disabled:opacity-50 disabled:cursor-wait"
+          aria-label="Tải ảnh lên để pixel hóa"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+          {isPixelating ? 'Đang xử lý...' : 'Pixel hóa'}
         </button>
         <button
           onClick={onClear}
